@@ -1,21 +1,32 @@
-"""fisherrao — Fisher-Rao geodesic distance on the multivariate Gaussian manifold.
+"""fisherrao — Fisher-Rao geometry on multiple statistical manifolds.
+
+v0.1: Multivariate Gaussian (Calvo-Oller SPD embedding) — `calvo_oller_distance`,
+trajectory metrics over MVN streams, Ledoit-Wolf shrinkage helpers.
+
+v0.2: Beta distribution family — closed-form KL, Fisher information matrix,
+geodesic distance (line-integral upper bound), Gaussian curvature via the
+Brioschi formula, method-of-moments fit. The Beta module is the foundation
+for OMEGA-style "information cost" of belief updates.
 
 Public API:
 
     from fisherrao import (
-        calvo_oller_distance,  # Fisher-Rao distance between two MVNs
-        fisher_rao_1d,          # exact 1D Gaussian distance (for tests)
-        fit_mvn,                # fit MVN from sample with Ledoit-Wolf shrinkage
-        trajectory_metrics,     # velocity + acceleration along MVN trajectory
+        # MVN family (v0.1)
+        calvo_oller_distance, fisher_rao_1d, fit_mvn, trajectory_metrics,
+        spd_embedding, spd_affine_distance,
+        # Beta family (v0.2)
+        kl_beta, fisher_information_beta, geodesic_distance_beta,
+        scalar_curvature_beta, fit_beta_mom,
     )
-
-    d = calvo_oller_distance(mu_a, sigma_a, mu_b, sigma_b)
-
-    steps = trajectory_metrics([(mu1, S1), (mu2, S2), (mu3, S3)], times=[0, 1, 2])
-    steps[-1].velocity       # Fisher-Rao distance per unit time
-    steps[-1].acceleration   # second derivative
 """
 
+from fisherrao.beta import (
+    fisher_information_beta,
+    fit_beta_mom,
+    geodesic_distance_beta,
+    kl_beta,
+    scalar_curvature_beta,
+)
 from fisherrao.core import (
     calvo_oller_distance,
     fisher_rao_1d,
@@ -27,6 +38,7 @@ from fisherrao.shrinkage import fit_mvn, ledoit_wolf_shrinkage
 from fisherrao.trajectory import TrajectoryStep, trajectory_metrics
 
 __all__ = [
+    # MVN family
     "calvo_oller_distance",
     "fisher_rao_1d",
     "spd_affine_distance",
@@ -36,5 +48,11 @@ __all__ = [
     "ledoit_wolf_shrinkage",
     "TrajectoryStep",
     "trajectory_metrics",
+    # Beta family
+    "kl_beta",
+    "fisher_information_beta",
+    "geodesic_distance_beta",
+    "scalar_curvature_beta",
+    "fit_beta_mom",
 ]
-__version__ = "0.1.0"
+__version__ = "0.2.0"
