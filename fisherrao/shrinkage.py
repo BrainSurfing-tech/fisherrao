@@ -84,6 +84,7 @@ def ledoit_wolf_shrinkage(
 def fit_mvn(
     x: np.ndarray,
     shrinkage: str = "ledoit-wolf",
+    standardize: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, float]:
     """Fit a multivariate Gaussian to a sample matrix with optional shrinkage.
 
@@ -93,19 +94,36 @@ def fit_mvn(
     shrinkage : {"ledoit-wolf", "none"}
         "ledoit-wolf" (default) applies Ledoit-Wolf 2004; safer for small n.
         "none" returns the empirical MLE (may be singular).
+    standardize : bool, default False (v0.3+)
+        When True, z-scores each column of `x` (per-feature mean-zero,
+        unit-variance) BEFORE fitting. This makes downstream Fisher-Rao
+        comparisons scale-invariant — useful for OCTG-style trajectory work
+        where input columns have wildly different units (e.g. price-return
+        z-scores at std~0.01 vs sentiment scores at std~3.0). The returned
+        `mu` is then in z-score space (≈ 0 vector) and `sigma` is a
+        correlation matrix. Set False (default) when the original units
+        are meaningful (e.g. you want to detect mean drift in raw space).
 
     Returns
     -------
     mu : ndarray of shape (d,)
-        Sample mean.
+        Sample mean (in z-score space if standardize=True).
     sigma : ndarray of shape (d, d)
-        Fitted covariance (shrunk if requested).
+        Fitted covariance (shrunk if requested; correlation if standardize=True).
     shrinkage_intensity : float
         Applied shrinkage intensity in [0, 1]. 0 means no shrinkage.
     """
     x = np.asarray(x, dtype=np.float64)
     if x.ndim != 2:
         raise ValueError(f"x must be 2D (n_samples, d), got shape {x.shape}")
+
+    if standardize:
+        col_mean = x.mean(axis=0, keepdims=True)
+        col_std = x.std(axis=0, ddof=0, keepdims=True)
+        # Guard zero-variance columns (would divide by 0 + corrupt manifold);
+        # column gets standardized to all-zeros which is benign.
+        col_std = np.where(col_std < 1e-12, 1.0, col_std)
+        x = (x - col_mean) / col_std
 
     mu = x.mean(axis=0)
     centered = x - mu

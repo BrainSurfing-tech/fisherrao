@@ -273,3 +273,97 @@ def fit_beta_mom(samples: np.ndarray, *, eps: float = 1e-3) -> tuple[float, floa
     alpha = mu * s
     beta = (1.0 - mu) * s
     return float(np.clip(alpha, 0.5, 100.0)), float(np.clip(beta, 0.5, 100.0))
+
+
+# =====================================================================
+# v0.3 — MLE estimator (alternative to MoM, less biased on small n)
+# =====================================================================
+
+def fit_beta_mle(
+    samples: np.ndarray,
+    *,
+    eps: float = 1e-3,
+    init: tuple[float, float] | None = None,
+) -> tuple[float, float]:
+    """Maximum-likelihood estimator for Beta(α, β) via numerical optimisation.
+
+    Method-of-moments (`fit_beta_mom`) has a systematic bias on small samples
+    (especially when the sample variance underestimates the population
+    variance — common with n < 30). MLE optimises the log-likelihood
+    directly:
+
+        L(α, β | x) = (α - 1) Σ log x_i + (β - 1) Σ log(1 - x_i)
+                      - n · ln B(α, β)
+
+    Solved with `scipy.optimize.minimize` (L-BFGS-B, log-parameterised so
+    α, β stay strictly positive). Falls back to MoM when optimisation fails.
+    Returns parameters clamped to [0.5, 100] matching MoM's behaviour, so
+    the two estimators are drop-in interchangeable downstream.
+
+    Parameters
+    ----------
+    samples : ndarray
+        1-D array of values in (0, 1). Boundary values clamped to (eps, 1-eps).
+    eps : float
+        Clamp width for boundary protection.
+    init : (α₀, β₀) | None
+        Starting point for L-BFGS-B. Defaults to MoM estimate (typically
+        within a few iterations of the true MLE).
+
+    Returns
+    -------
+    (α, β) : tuple[float, float]
+        Clamped to [0.5, 100] each.
+
+    References
+    ----------
+    Owen, C.E.B. (2008). "Parameter Estimation for the Beta Distribution",
+    M.Sc. thesis, Brigham Young University. Sec. 3.2 — MLE via Newton-
+    Raphson on the digamma equations; we use L-BFGS-B which is more robust
+    on the (α, β) cliff at small variance.
+    """
+    from scipy.optimize import minimize
+
+    x = np.asarray(samples, dtype=np.float64).ravel()
+    if x.size < 2:
+        raise ValueError("need >= 2 samples for MLE")
+    x = np.clip(x, eps, 1.0 - eps)
+    n = x.size
+    sum_log_x = float(np.sum(np.log(x)))
+    sum_log_1mx = float(np.sum(np.log(1.0 - x)))
+
+    if init is None:
+        try:
+            init = fit_beta_mom(x, eps=eps)
+        except Exception:
+            init = (1.0, 1.0)
+
+    # Optimise in log-space so α, β stay > 0
+    log_init = np.log(np.array(init, dtype=np.float64))
+
+    def neg_log_lik(log_params: np.ndarray) -> float:
+        a = float(np.exp(log_params[0]))
+        b = float(np.exp(log_params[1]))
+        # log B(a, b) = lgamma(a) + lgamma(b) - lgamma(a+b)
+        # gammaln may overflow on extreme L-BFGS-B steps — np handles it as inf,
+        # which the optimizer reads as a barrier. Suppress the noisy warning.
+        with np.errstate(invalid="ignore", over="ignore"):
+            log_beta = gammaln(a) + gammaln(b) - gammaln(a + b)
+        if not np.isfinite(log_beta):
+            return float("inf")
+        ll = (a - 1.0) * sum_log_x + (b - 1.0) * sum_log_1mx - n * log_beta
+        return -ll
+
+    try:
+        res = minimize(neg_log_lik, log_init, method="L-BFGS-B",
+                       options={"maxiter": 200, "ftol": 1e-9})
+        if not res.success:
+            return fit_beta_mom(x, eps=eps)
+        alpha, beta = float(np.exp(res.x[0])), float(np.exp(res.x[1]))
+    except Exception:
+        return fit_beta_mom(x, eps=eps)
+
+    return (
+        float(np.clip(alpha, 0.5, 100.0)),
+        float(np.clip(beta, 0.5, 100.0)),
+    )

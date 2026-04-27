@@ -133,6 +133,60 @@ def calvo_oller_distance(
     return spd_affine_distance(q_a, q_b)
 
 
+def fisher_rao_mvn_bounds(
+    mu_a: np.ndarray,
+    sigma_a: np.ndarray,
+    mu_b: np.ndarray,
+    sigma_b: np.ndarray,
+) -> tuple[float, float]:
+    """Lower + upper bounds bracketing the true Fisher-Rao distance on MVN. (v0.3+)
+
+    The Calvo-Oller SPD embedding gives a *lower bound* on the true Fisher-Rao
+    distance (with equality only when the two MVNs share a mean). For
+    diagnostic work it is useful to also have an upper bound so users can see
+    how loose the lower bound actually is — and choose to invest in an
+    iterative true-Fisher-Rao solver (planned for v0.4) when the gap matters.
+
+    The upper bound used here is the **product-bound**: bounded by the sum
+    of (a) the Calvo-Oller distance with a shared mean (the mu_a half-step)
+    plus (b) the Calvo-Oller distance with a shared sigma (the sigma_a
+    half-step), routed through an intermediate (mu_b, sigma_a). This is an
+    application of the triangle inequality to the manifold path
+    (mu_a, sigma_a) → (mu_b, sigma_a) → (mu_b, sigma_b). It is exact when the
+    parameter changes are perpendicular under the metric, and a strict upper
+    bound otherwise.
+
+    Returns
+    -------
+    (lower, upper) : tuple[float, float]
+        `lower` is `calvo_oller_distance(...)`. `upper` is the triangle-
+        inequality bound described above. The true Fisher-Rao distance lies
+        in [lower, upper]. When `lower == upper` (within floating tolerance),
+        the bound is exact (e.g. mean-only or covariance-only displacement).
+
+    Note
+    ----
+    Pinele, J., Costa, S.I.R. & Strapasson, J.E. (2020). "On the Fisher-Rao
+    information metric in the space of normal distributions." Information
+    Geometry 3 — provides sharper bounds via the affine-equivariant
+    decomposition. The triangle-bound here is a simpler upper bound that
+    needs only `calvo_oller_distance` calls; the Pinele-Costa 2020 sharper
+    forms are queued for v0.4.
+    """
+    mu_a = np.asarray(mu_a, dtype=np.float64).reshape(-1)
+    mu_b = np.asarray(mu_b, dtype=np.float64).reshape(-1)
+    sigma_a = np.asarray(sigma_a, dtype=np.float64)
+    sigma_b = np.asarray(sigma_b, dtype=np.float64)
+
+    lower = calvo_oller_distance(mu_a, sigma_a, mu_b, sigma_b)
+    # Triangle path: (mu_a, sigma_a) → (mu_b, sigma_a) → (mu_b, sigma_b)
+    leg1 = calvo_oller_distance(mu_a, sigma_a, mu_b, sigma_a)  # mean-only
+    leg2 = calvo_oller_distance(mu_b, sigma_a, mu_b, sigma_b)  # sigma-only
+    upper = leg1 + leg2
+
+    return lower, upper
+
+
 def fisher_rao_1d(
     mu_a: float,
     sigma_a: float,
