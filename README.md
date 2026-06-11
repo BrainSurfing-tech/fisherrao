@@ -12,7 +12,7 @@ where
 
   Q(μ, Σ) = [[ Σ + μμᵀ, μ ], [ μᵀ, 1 ]]    (the (d+1)x(d+1) Calvo-Oller SPD embedding)
 
-This is a **closed-form lower bound** on the true Fisher-Rao geodesic distance between the two MVNs. It respects Chentsov's axioms (invariant under reparametrization), is symmetric and non-negative, vanishes iff the two MVNs are identical, and composes as a proper metric. For OMEGA-style applications (detecting regime shifts via velocity/acceleration of a rolling MVN trajectory) it is the right tool — what matters is a consistent, tractable Riemannian distance, not the exact Fisher-Rao value.
+This is a **closed-form lower bound** on the true Fisher-Rao geodesic distance between the two MVNs. It respects Chentsov's axioms (invariant under reparametrization), is symmetric and non-negative, vanishes iff the two MVNs are identical, and composes as a proper metric. For regime-detection applications (velocity/acceleration of a rolling MVN trajectory) it is the right tool — what matters is a consistent, tractable Riemannian distance, not the exact Fisher-Rao value.
 
 The true Fisher-Rao distance between arbitrary MVN pairs has no universally-accepted closed form; most production implementations (including this one) use either the Calvo-Oller lower bound or the Strapasson 2016 iterative solver. We ship the closed-form path because it's ~100× faster and plenty accurate for geodesic-velocity work.
 
@@ -88,14 +88,14 @@ When the number of samples is smaller than the dimension, the empirical covarian
 
 ## Why this library exists
 
-While building OMEGA's "Consensus Trajectory Geometry" meta-signal (Phase 19 Tier A #5 — Fisher-Rao geodesic velocity of sector-level agent-score MVNs as a pre-regime-transition indicator), we needed a small, fast, tested Fisher-Rao implementation that:
+While building a "consensus trajectory geometry" signal (Fisher-Rao geodesic velocity of sector-level MVNs as a pre-regime-transition indicator), we needed a small, fast, tested Fisher-Rao implementation that:
 
 - Installs cleanly on Python 3.9–3.13 (geomstats 2.7 breaks on numpy 2.x as of 2026-04)
 - Has zero C++ / GPU dependencies
 - Documents the convention choice honestly (Calvo-Oller vs true Fisher-Rao is a real distinction)
 - Validates against hand-derived analytical cases, not just library cross-checks
 
-Nothing in the fisherrao API mentions OMEGA, regime shifts, or agent scores — the library is deliberately application-agnostic.
+Nothing in the fisherrao API mentions regime shifts or agent scores — the library is deliberately application-agnostic.
 
 ## Roadmap
 
@@ -110,7 +110,7 @@ Nothing in the fisherrao API mentions OMEGA, regime shifts, or agent scores — 
 - **Pierre Samson** ([@darw007d](https://github.com/darw007d)) — idea, use-case, design decisions
 - **Claude Opus** (Anthropic) — implementation and tests
 
-Originally motivated by the [OMEGA Swarm](https://github.com/darw007d/hedge-fund-mcp) project, Phase 19 Tier A #5 "Consensus Trajectory Geometry". Shipped as a companion to [phawkes](https://pypi.org/project/phawkes/) (same authors, same "small, tested, publishable" ethos).
+Originally motivated by a quantitative-finance application (consensus trajectory geometry). Shipped as a companion to [phawkes](https://pypi.org/project/phawkes/) (same authors, same "small, tested, publishable" ethos).
 
 ## Citations
 
