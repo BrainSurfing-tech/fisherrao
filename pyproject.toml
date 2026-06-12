@@ -37,8 +37,8 @@ dev = ["pytest>=7", "pytest-cov"]
 shrinkage = ["scikit-learn>=1.2"]
 
 [project.urls]
-Homepage = "https://github.com/darw007d/fisherrao"
-Issues = "https://github.com/darw007d/fisherrao/issues"
+Homepage = "https://github.com/BrainSurfing-tech/fisherrao"
+Issues = "https://github.com/BrainSurfing-tech/fisherrao/issues"
 
 [tool.setuptools.packages.find]
 include = ["fisherrao*"]
